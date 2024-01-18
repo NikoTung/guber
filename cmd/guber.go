@@ -148,19 +148,17 @@ func (g *Guber) updateHosts(env string, app string, h []string) {
 
 func (g *Guber) watch(nc *NacosClient, apps []string, env string) {
 	ticker := time.NewTicker(10 * time.Second)
+	g.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
+		defer done()
+		<-closeSignal
+		ticker.Stop()
+	})
 	go func() {
-		select {
-		case <-g.GetSafeClose().ReceiveCloseSignal():
-			{
-				ticker.Stop()
-			}
-		case <-ticker.C:
-			{
-				for _, app := range apps {
-					app, h, err := nc.GetNacosService(app)
-					if err == nil {
-						g.updateHosts(env, app, h)
-					}
+		for range ticker.C {
+			for _, app := range apps {
+				app, h, err := nc.GetNacosService(app)
+				if err == nil {
+					g.updateHosts(env, app, h)
 				}
 			}
 		}
