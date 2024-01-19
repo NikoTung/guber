@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -19,6 +20,7 @@ type NacosClient struct {
 	TokenTtl    int64
 	LastLogin   int64
 	Cache       map[string][]string
+	Env         string
 }
 
 // {"accessToken":"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJuYWNvcyIsImV4cCI6MTYwNTYyOTE2Nn0.2TogGhhr11_vLEjqKko1HJHUJEmsPuCxkur-CfNojDo","tokenTtl":18000,"globalAdmin":true}
@@ -41,13 +43,14 @@ type nacosHost struct {
 	Healthy bool   `json:"healthy"`
 }
 
-func NewNacosClient(nacosConfig *Nacos) *NacosClient {
+func NewNacosClient(nacosConfig *Nacos, env string) *NacosClient {
 	return &NacosClient{
 		NacosConfig: nacosConfig,
 		AccessToken: "",
 		TokenTtl:    0,
 		LastLogin:   0,
 		Cache:       make(map[string][]string),
+		Env:         env,
 	}
 }
 
@@ -170,16 +173,18 @@ func (n *NacosClient) GetNacosService(app string) (string, []string, error) {
 		}
 	}
 
+	name := fmt.Sprintf("%s.%s", app, n.Env)
+
 	//check if hosts is in cache
-	if hs, ok := n.Cache[app]; ok {
+	if hs, ok := n.Cache[name]; ok {
 		if len(hs) == len(hosts) && reflect.DeepEqual(hs, hosts) {
 			return "", nil, errors.New("nacos get service response hosts is same")
 		}
 	}
 
-	n.Cache[app] = hosts
+	n.Cache[name] = hosts
 
-	mlog.L().Info("nacos get service success", zap.String("app", app), zap.Strings("hosts", hosts))
+	mlog.L().Info("nacos get service success", zap.String("app", name), zap.Strings("hosts", hosts), zap.String("addr", n.NacosConfig.Addr))
 
-	return app, hosts, nil
+	return name, hosts, nil
 }

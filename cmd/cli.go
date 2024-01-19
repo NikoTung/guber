@@ -130,8 +130,8 @@ func runCmd() *cobra.Command {
 		Short: "Dry run with the config file.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			mlog.SetLevel(zap.ErrorLevel)
 			g, err := NewServer(sf)
+			mlog.SetLevel(zap.ErrorLevel)
 			if err != nil {
 				return fmt.Errorf("failed to init service, %w", err)
 			}

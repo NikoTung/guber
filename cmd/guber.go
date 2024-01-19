@@ -15,7 +15,7 @@ import (
 type Guber struct {
 	sc *safe_close.SafeClose
 
-	nacos  *[]NacosClient
+	nacos  map[string]*NacosClient
 	config *Config
 	hosts  *txeh.Hosts
 }
@@ -40,7 +40,7 @@ func NewGuber(cfg *Config) (*Guber, error) {
 		mlog.L().Warn("failed to backup hosts", zap.Error(err), zap.String("path", backupPath))
 	}
 
-	var ncs []NacosClient
+	var ncs = make(map[string]*NacosClient, len(cfg.App))
 	sc := safe_close.NewSafeClose()
 	g := &Guber{
 		config: cfg,
@@ -50,16 +50,17 @@ func NewGuber(cfg *Config) (*Guber, error) {
 
 	// Init nacos clients.
 	for _, app := range cfg.App {
-		nc := NewNacosClient(&app.Nacos)
-
+		n := app
+		nc := NewNacosClient(&n.Nacos, app.Env)
+		mlog.L().Debug("Checking nacos connection", zap.String("env", n.Env), zap.String("nacos", nc.NacosConfig.Addr))
 		err := nc.Run(g)
 		if err != nil {
 			return nil, err
 		}
-		ncs = append(ncs, *nc)
-		g.watch(nc, app.Names, app.Env)
+		ncs[n.Env] = nc
 	}
-	g.nacos = &ncs
+	g.nacos = ncs
+	g.watch()
 
 	g.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
 		defer done()
@@ -96,23 +97,23 @@ func (g *Guber) restore(backupPath string, hosts *txeh.Hosts) {
 func (g *Guber) Status() string {
 	var output string
 	for _, app := range g.config.App {
-		nc := NewNacosClient(&app.Nacos)
+		nc := NewNacosClient(&app.Nacos, app.Env)
 		err := nc.Run(g)
 		if err != nil {
 			output += fmt.Sprintf("nacos: %s,error \n", nc.NacosConfig.Addr)
 		} else {
 			output += fmt.Sprintf("nacos: %s\n", nc.NacosConfig.Addr)
 		}
-		for _, app := range g.config.App {
-			for _, name := range app.Names {
-				_, h, err := nc.GetNacosService(name)
-				if err == nil {
-					output += fmt.Sprintf("  %s: %s\n", name, h)
-				} else {
-					output += fmt.Sprintf("  %s: error\n", name)
-				}
+		for _, name := range app.Names {
+			_, h, err := nc.GetNacosService(name)
+			if err == nil {
+				output += fmt.Sprintf("  %s: %s\n", name, h)
+			} else {
+				mlog.L().Error("failed to get nacos service", zap.String("name", name), zap.Error(err))
+				output += fmt.Sprintf("  %s: error\n", name)
 			}
 		}
+
 	}
 
 	return output
@@ -132,13 +133,12 @@ func (g *Guber) Logger() *zap.Logger {
 	return mlog.L()
 }
 
-func (g *Guber) updateHosts(env string, app string, h []string) {
-	host := fmt.Sprintf("%s.%s", app, env)
-	mlog.L().Info("update hosts", zap.String("host", host), zap.Strings("hosts", h))
-	g.hosts.RemoveHost(host)
+func (g *Guber) updateHosts(app string, h []string) {
+	mlog.L().Info("update hosts", zap.String("host", app), zap.Strings("hosts", h))
+	g.hosts.RemoveHost(app)
 	for _, ip := range h {
-		mlog.L().Debug("add host", zap.String("host", host), zap.String("ip", ip))
-		g.hosts.AddHost(ip, host)
+		mlog.L().Debug("add host", zap.String("host", app), zap.String("ip", ip))
+		g.hosts.AddHost(ip, app)
 	}
 	err := g.hosts.Save()
 	if err != nil {
@@ -146,7 +146,7 @@ func (g *Guber) updateHosts(env string, app string, h []string) {
 	}
 }
 
-func (g *Guber) watch(nc *NacosClient, apps []string, env string) {
+func (g *Guber) watch() {
 	ticker := time.NewTicker(10 * time.Second)
 	g.sc.Attach(func(done func(), closeSignal <-chan struct{}) {
 		defer done()
@@ -155,10 +155,14 @@ func (g *Guber) watch(nc *NacosClient, apps []string, env string) {
 	})
 	go func() {
 		for range ticker.C {
-			for _, app := range apps {
-				app, h, err := nc.GetNacosService(app)
-				if err == nil {
-					g.updateHosts(env, app, h)
+			for _, app := range g.config.App {
+				nc := g.nacos[app.Env]
+				mlog.L().Debug("watch", zap.String("env", app.Env), zap.String("nacos", nc.NacosConfig.Addr), zap.Strings("apps", app.Names))
+				for _, name := range app.Names {
+					app, h, err := nc.GetNacosService(name)
+					if err == nil {
+						g.updateHosts(app, h)
+					}
 				}
 			}
 		}
