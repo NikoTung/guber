@@ -28,8 +28,8 @@ service:
 
 ```
 
-It will append some address-ip into hosts file
+It will append some address-ip into hosts file,like:
 
-     app-service.dev 192.168.8.19
-     app-data.dev 192.168.8.20
-     backend-service.test 10.0.19.1
+     192.168.8.19 app-service.dev backend-service.dev
+     192.168.8.20 app-data.dev 
+     10.0.19.1 backend-service.test 
