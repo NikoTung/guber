@@ -30,7 +30,6 @@ type loginResponse struct {
 	GlobalAdmin bool   `json:"globalAdmin"`
 }
 
-// {"name":"DEFAULT_GROUP@@ownbank-deposit-service","groupName":"DEFAULT_GROUP","clusters":"","cacheMillis":10000,"hosts":[{"ip":"192.168.56.199","port":11663,"weight":1.0,"healthy":true,"enabled":true,"ephemeral":true,"clusterName":"DEFAULT","serviceName":"DEFAULT_GROUP@@ownbank-deposit-service","metadata":{"dubbo.metadata-service.url-params":"{\"connections\":\"1\",\"version\":\"1.0.0\",\"dubbo\":\"2.0.2\",\"release\":\"3.1.3\",\"side\":\"provider\",\"port\":\"11663\",\"protocol\":\"dubbo\"}","X_ROUTER_TAG":"stable","dubbo.endpoints":"[{\"port\":11663,\"protocol\":\"dubbo\"}]","dubbo.metadata.revision":"9fcdb0a156559f3f0a0bf83623a20fbd","dubbo.metadata.storage-type":"local","timestamp":"1700551351464"},"instanceHeartBeatInterval":5000,"instanceHeartBeatTimeOut":15000,"ipDeleteTimeout":30000}],"lastRefTime":1705474386546,"checksum":"","allIPs":false,"reachProtectionThreshold":false,"valid":true}
 type nacosService struct {
 	Name  string      `json:"name"`
 	Hosts []nacosHost `json:"hosts"`
