@@ -16,6 +16,12 @@ type App struct {
 	Names []string `yaml:"names"`
 	Env   string   `yaml:"env"`
 	Nacos Nacos    `yaml:"nacos"`
+	Keep  []Meta   `yaml:"keep"`
+}
+
+type Meta struct {
+	Key string `yaml:"key"`
+	Val string `yaml:"value"`
 }
 
 type Log struct {

@@ -38,9 +38,10 @@ type nacosService struct {
 
 // hosts
 type nacosHost struct {
-	Ip      string `json:"ip"`
-	Port    int32  `json:"port"`
-	Healthy bool   `json:"healthy"`
+	Ip       string            `json:"ip"`
+	Port     int32             `json:"port"`
+	Healthy  bool              `json:"healthy"`
+	Metadata map[string]string `json:"metadata"`
 }
 
 func NewNacosClient(nacosConfig *Nacos, env string) *NacosClient {
@@ -128,7 +129,7 @@ func (n *NacosClient) Login() error {
 }
 
 // curl -X GET 'http://127.0.0.1:8848/nacos/v1/ns/instance/list?accessToken=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJuYWNvcyIsImV4cCI6MTcwNTQ5MjM0MX0.jXXwYRrQxWjETD1fLxOb2i0heXg7xz_vIyEcy2Y&serviceName=nacos.test.1'
-func (n *NacosClient) GetNacosService(app string) (string, []string, error) {
+func (n *NacosClient) GetNacosService(app string, keep []Meta) (string, []string, error) {
 	params := url.Values{
 		"accessToken": {n.AccessToken},
 		"serviceName": {app},
@@ -168,8 +169,20 @@ func (n *NacosClient) GetNacosService(app string) (string, []string, error) {
 	var hosts []string
 
 	for _, host := range nacosService.Hosts {
-		if host.Healthy {
+		if !host.Healthy {
+			continue
+		}
+
+		if len(keep) == 0 {
 			hosts = append(hosts, host.Ip)
+			continue
+		} else {
+			for _, k := range keep {
+				if v, ok := host.Metadata[k.Key]; ok && (k.Val == "" || v == k.Val) {
+					hosts = append(hosts, host.Ip)
+					break
+				}
+			}
 		}
 	}
 

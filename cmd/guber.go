@@ -105,7 +105,7 @@ func (g *Guber) Status() string {
 			output += fmt.Sprintf("nacos: %s\n", nc.NacosConfig.Addr)
 		}
 		for _, name := range app.Names {
-			_, h, err := nc.GetNacosService(name)
+			_, h, err := nc.GetNacosService(name, app.Keep)
 			if err == nil {
 				output += fmt.Sprintf("  %s: %s\n", name, h)
 			} else {
@@ -159,7 +159,7 @@ func (g *Guber) watch() {
 				nc := g.nacos[app.Env]
 				mlog.L().Debug("watch", zap.String("env", app.Env), zap.String("nacos", nc.NacosConfig.Addr), zap.Strings("apps", app.Names))
 				for _, name := range app.Names {
-					app, h, err := nc.GetNacosService(name)
+					app, h, err := nc.GetNacosService(name, app.Keep)
 					if err == nil {
 						g.updateHosts(app, h)
 					}
