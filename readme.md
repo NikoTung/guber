@@ -18,6 +18,13 @@ service:
       addr: http://127.0.0.1:8848
       username: nacos
       password: nacos
+    keep:
+      # keep router tag & value third
+      - key: "router"
+        value: "third"
+        # keep dubbo tag
+      - key: "dubbo"
+        value: ""
   - names:
       - "backen-service"
     env: test
